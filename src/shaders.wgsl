@@ -5,13 +5,15 @@ struct Fragment {
 
 @vertex
 fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> Fragment {
+
+    // Pre-bake positions and colors, for now.
     var positions = array<vec2<f32>, 3> (
         // Position for vertex at index 0
         vec2<f32>(0, .5),
         // Position for vertex at index 1
-        vec2<f32>(-.5, .5),
+        vec2<f32>(-.5, -.5),
         // Position for vertex at index 2
-        vec2<f32>(.5, .5),
+        vec2<f32>(.5, -.5),
     );
 
     // Color array for each vertex
