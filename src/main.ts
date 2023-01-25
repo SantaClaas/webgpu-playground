@@ -1,5 +1,6 @@
 // Try this with fable later 🤔 https://fable.io/docs/communicate/js-from-fable.html#importing-relative-paths-when-using-an-output-directory
-import shader from "./shaders.wgsl?raw"
+import shader from "./shaders.wgsl?raw";
+import * as TriangleMesh from "./triangleMesh";
 
 console.log("👋")
 if (!navigator.gpu) {
@@ -32,26 +33,46 @@ context.configure({
     alphaMode: "opaque"
 });
 
+
 // Create pipeline
 const shaderModule = device.createShaderModule({
     code: shader
 })
+
+// Bind groups & pipeline -> render pass ?
+const triangleMesh = TriangleMesh.create(device);
+
+const bindGroupLayout = device.createBindGroupLayout({
+    entries: [],
+});
+
+const bindGroup = device.createBindGroup({
+    entries: [],
+    layout: bindGroupLayout,
+});
+
+const pipelineLayout = device.createPipelineLayout({
+    bindGroupLayouts: [bindGroupLayout]
+})
+
 const pipeline = await device.createRenderPipelineAsync({
     vertex: {
         module: shaderModule,
         entryPoint: "vertex_main",
+        buffers: [triangleMesh.bufferLayout,],
     },
     fragment: {
         module: shaderModule,
         entryPoint: "fragment_main",
         targets: [{ format }],
     },
-    layout: "auto",
+    layout: pipelineLayout,
     primitive: {
         topology: "triangle-list"
     }
 });
 
+// Create a pass
 // "Basically a command buffer"
 const commandEncoder = device.createCommandEncoder();
 // To access images we create image views on them (like vulkan?)(?)
@@ -67,7 +88,8 @@ const renderPass = commandEncoder.beginRenderPass({
 });
 
 renderPass.setPipeline(pipeline);
-
+renderPass.setBindGroup(0, bindGroup);
+renderPass.setVertexBuffer(0, triangleMesh.buffer);
 // 3 Points, 1 instance, 0 index (first) of vertex, first index (0)
 renderPass.draw(3, 1, 0, 0);
 renderPass.end();
