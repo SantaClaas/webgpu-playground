@@ -17,5 +17,6 @@
     "@webgpu/types": "^0.1.24"
   },
   "dependencies": {
+    "gl-matrix": "^3.4.3"
   }
 }
