@@ -3,8 +3,13 @@ import shader from "./shaders.wgsl?raw";
 import * as TriangleMesh from "./triangleMesh";
 import * as Material from "./material";
 import { mat4, ReadonlyVec3 } from "gl-matrix";
+import * as Triangle from "./triangle";
+import * as Camera from "./camera";
+import * as Scene from "./scene";
 
-console.log("🏃💨🏎️💨")
+
+console.log("🏃💨🏎️💨");
+
 if (!navigator.gpu) {
     console.error("WebGPU is not supported");
     throw Error("WebGPU is not supported yet 😔");
@@ -50,7 +55,7 @@ const shaderModule = device.createShaderModule({
 const triangleMesh = TriangleMesh.create(device);
 
 const material = await Material.create(device, "hugo.jpg");
-if(!material){
+if (!material) {
     throw new Error("Could not create material");
 }
 
@@ -119,7 +124,6 @@ const pipeline = await device.createRenderPipelineAsync({
     }
 });
 
-let rotationRadians = 0;
 const projection = mat4.create();
 // 45 degree in radians 
 const fieldOfView = Math.PI / 4;
@@ -127,35 +131,74 @@ const aspectRatio = canvas.width / canvas.height;
 const distance = { near: .1, far: 10 };
 mat4.perspective(projection, fieldOfView, aspectRatio, distance.near, distance.far);
 
-const view = mat4.create();
-// x/y/z
-const cameraPosition: ReadonlyVec3 = [-2, 0, 2];
-// Where the camera is looking at
-const center: ReadonlyVec3 = [0, 0, 0];
-// Up vector one up in the Z
-const up: ReadonlyVec3 = [0, 0, 1];
-mat4.lookAt(view, cameraPosition, center, up);
+let scene = Scene.create();
+let forwardsAmount = 0;
+let rightAmount = 0;
+
+let spinPlayerX = 0;
+let spinPlayerY = 0;
+
+// CONTROLS
+document.addEventListener("keydown", (event) => {
+
+    console.log(event.code);
+    switch (event.code) {
+        case "KeyW":
+            forwardsAmount = .02;
+            return;
+        case "KeyA":
+            rightAmount = .02;
+            return;
+        case "KeyS":
+            forwardsAmount = -.02;
+            return;
+        case "KeyD":
+            rightAmount = -.02;
+            return;
+    }
+});
+
+document.addEventListener("keyup", (event) => {
+    switch (event.code) {
+        case "KeyW":
+            forwardsAmount = 0;
+            return;
+        case "KeyA":
+            rightAmount = 0;
+            return;
+        case "KeyS":
+            forwardsAmount = 0;
+            return;
+        case "KeyD":
+            rightAmount = 0;
+            return;
+    }
+});
+
+document.addEventListener("mousemove", (event) => {
+    spinPlayerX = event.movementX / 5;
+    spinPlayerY = -event.movementY / 5;
+});
+
+canvas.addEventListener("click", () => {
+    canvas.requestPointerLock();
+})
 // RENDER
 
 const render = () => {
+    scene = Scene.update(scene);
+    if (forwardsAmount !== 0 || rightAmount !== 0)
+        scene = Scene.movePlayer(scene, forwardsAmount, rightAmount);
 
-
-    // Model transform
-    const model = mat4.create();
-    // Rotate around the Z axis
-    const axis: ReadonlyVec3 = [0, 0, 1];
-    rotationRadians += .01;
-    const threshold = 2 * Math.PI;
-    if (rotationRadians > threshold) {
-        rotationRadians -= threshold;
+    if (spinPlayerX !== 0 || spinPlayerY !== 0) {
+        scene = Scene.spinPlayer(scene, spinPlayerX, spinPlayerY);
+        spinPlayerX = spinPlayerY = 0;
     }
 
-    mat4.rotate(model, model, rotationRadians, axis);
+    const view = scene.player.view;
 
-    device.queue.writeBuffer(uniformBuffer, 0, model as ArrayBuffer);
     device.queue.writeBuffer(uniformBuffer, 64, view as ArrayBuffer);
     device.queue.writeBuffer(uniformBuffer, 128, projection as ArrayBuffer);
-
 
     // Create a pass
     // "Basically a command buffer"
@@ -173,10 +216,14 @@ const render = () => {
     });
 
     renderPass.setPipeline(pipeline);
-    renderPass.setBindGroup(0, bindGroup);
     renderPass.setVertexBuffer(0, triangleMesh.buffer);
-    // 3 Points, 1 instance, 0 index (first) of vertex, first index (0)
-    renderPass.draw(3, 1, 0, 0);
+    scene.triangles.forEach(({ model }) => {
+        // Model transform
+        device.queue.writeBuffer(uniformBuffer, 0, model as ArrayBuffer);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(3, 1, 0, 0);
+    });
+
     renderPass.end();
 
     device.queue.submit([commandEncoder.finish()]);

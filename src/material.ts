@@ -30,7 +30,7 @@ export async function create(device: GPUDevice, url: string) : Promise<Material 
     const view = texture.createView(viewDescriptor);
 
     // Create sampler
-    const samperDescriptor : GPUSamplerDescriptor = {
+    const samplerDescriptor : GPUSamplerDescriptor = {
         addressModeU: "repeat",
         addressModeV: "repeat",
         magFilter: "linear",
@@ -39,7 +39,7 @@ export async function create(device: GPUDevice, url: string) : Promise<Material 
         maxAnisotropy: 1,
     };
 
-    const sampler = device.createSampler(samperDescriptor);
+    const sampler = device.createSampler(samplerDescriptor);
 
     return {
         texture,
