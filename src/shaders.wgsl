@@ -7,14 +7,17 @@ struct TransformData {
 
 // Defining it as uniform makes it like a global value
 @binding(0) @group(0) var<uniform> transform_uniform_buffer_object : TransformData;
+// The texture and sampler
+@binding(1) @group(0) var material_texture : texture_2d<f32>;
+@binding(2) @group(0) var texture_sampler : sampler;
 
 struct Fragment {
     @builtin(position) Position : vec4<f32>,
-    @location(0) Color : vec4<f32>,
+    @location(0) TextureCoordinate : vec2<f32>,
 };
 
 @vertex
-fn vertex_main(@location(0) vertex_position: vec3<f32>, @location(1) vertex_color : vec3<f32>) -> Fragment {
+fn vertex_main(@location(0) vertex_position: vec3<f32>, @location(1) vertex_texture_coordinate : vec2<f32>) -> Fragment {
 
     var output : Fragment;
     // X, Y, Z from buffer and W as 1
@@ -28,7 +31,7 @@ fn vertex_main(@location(0) vertex_position: vec3<f32>, @location(1) vertex_colo
             * vec4<f32>(vertex_position, 1);
 
     // Append alpha channel of 1 to color to make it vector 4
-    output.Color = vec4<f32>(vertex_color, 1);
+    output.TextureCoordinate = vertex_texture_coordinate;
 
     // Transform data
 
@@ -36,6 +39,8 @@ fn vertex_main(@location(0) vertex_position: vec3<f32>, @location(1) vertex_colo
 }
 
 @fragment
-fn fragment_main(@location(0) color : vec4<f32>) -> @location(0) vec4<f32> {
-    return color;
+fn fragment_main(@location(0) texture_coordinate : vec2<f32>) -> @location(0) vec4<f32> {
+
+    // Sample
+   return textureSample(material_texture, texture_sampler, texture_coordinate);
 }

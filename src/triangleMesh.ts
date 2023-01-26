@@ -7,12 +7,13 @@ interface TriangleMesh {
 }
 
 export function create(device: GPUDevice) : TriangleMesh {
-    // Layout is X, Y, Z, R, G, B
+    // Layout is X, Y, Z, R, U, V
+    // U, V are texture coordinates
     const vertices = new Float32Array(
         [
-           0, 0, .5, 1, 0, 0,
-           0, -.5, -.5, 0, 1, 0,
-           0, .5, -.5, 0, 0, 1
+           0, 0, .5, .5, 0,
+           0, -.5, -.5, 0, 1,
+           0, .5, -.5, 1, 1,
         ]
     );
 
@@ -41,10 +42,10 @@ export function create(device: GPUDevice) : TriangleMesh {
     // Define buffer layout
     const bufferLayout: GPUVertexBufferLayout = {
         // How many bytes we need to step to get to the next vertex
-        // 6 32 bit numbers are one vertex as seen above (X,Y,Z,R,G,B)
-        // 32 bit are 4 bytes per number and we have 6 numbers
-        // so 6 * 4 = 24
-        arrayStride: 24,
+        // 5 32 bit numbers are one vertex as seen above (X,Y,Z,R,U,V)
+        // 32 bit are 4 bytes per number and we have 5 numbers
+        // so 5 * 4 = 24
+        arrayStride: 20,
         // There is position and color in there,
         attributes: [
             // Position attribute
@@ -59,7 +60,7 @@ export function create(device: GPUDevice) : TriangleMesh {
             // Color attribute
             {
                 shaderLocation: 1,
-                format: "float32x3",
+                format: "float32x2",
                 // 3 float32 for color before is 12 bytes
                 offset: 12,
             },
