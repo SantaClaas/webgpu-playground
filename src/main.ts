@@ -175,13 +175,27 @@ document.addEventListener("keyup", (event) => {
     }
 });
 
-document.addEventListener("mousemove", (event) => {
+function handleMouseMove(event: MouseEvent) {
     spinPlayerX = event.movementX / 5;
     spinPlayerY = -event.movementY / 5;
-});
+}
+document.addEventListener("pointerlockchange", () => {
+    // It is locked
+    if (document.pointerLockElement === canvas) {
+        document.addEventListener("mousemove", handleMouseMove);
+        return;
+    }
 
+    document.removeEventListener("mousemove", handleMouseMove);
+})
 canvas.addEventListener("click", () => {
-    canvas.requestPointerLock();
+
+    if (document.pointerLockElement !== canvas) {
+        canvas.requestPointerLock();
+        return;
+    }
+
+    // Other click handling
 })
 // RENDER
 
