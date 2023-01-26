@@ -147,13 +147,13 @@ document.addEventListener("keydown", (event) => {
             forwardsAmount = .02;
             return;
         case "KeyA":
-            rightAmount = .02;
+            rightAmount = -.02;
             return;
         case "KeyS":
             forwardsAmount = -.02;
             return;
         case "KeyD":
-            rightAmount = -.02;
+            rightAmount = .02;
             return;
     }
 });
