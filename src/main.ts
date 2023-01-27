@@ -55,6 +55,10 @@ const shaderModule = device.createShaderModule({
 const triangleMesh = TriangleMesh.create(device);
 
 const material = await Material.create(device, "hugo.jpg");
+if (!material) {
+    throw new Error("Could not create material");
+}
+
 
 const modelBufferDescriptor: GPUBufferDescriptor = {
     // A model matrix has 16 float32s (4x4) which is 16 * 4 bytes = 64 bytes per triangle
@@ -64,10 +68,41 @@ const modelBufferDescriptor: GPUBufferDescriptor = {
 };
 
 const objectBuffer = device.createBuffer(modelBufferDescriptor);
-if (!material) {
-    throw new Error("Could not create material");
-}
 
+// Make depth buffer resources
+// Depth stencil
+const depthStencilState: GPUDepthStencilState = {
+    format: "depth24plus-stencil8",
+    depthWriteEnabled: true,
+    depthCompare: "less-equal",
+};
+
+const depthStencilBufferDescriptor: GPUTextureDescriptor = {
+    size: {
+        width: canvas.width,
+        height: canvas.height,
+        depthOrArrayLayers: 1,
+    },
+    format: "depth24plus-stencil8",
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+
+};
+const depthStencilBuffer = device.createTexture(depthStencilBufferDescriptor);
+const depthStencilView = depthStencilBuffer.createView({
+    format: "depth24plus-stencil8",
+    dimension: "2d",
+    aspect: "all",
+});
+const depthStencilAttachment: GPURenderPassDepthStencilAttachment = {
+    view: depthStencilView,
+    // 1 is the maximum depth and we want to draw things that are closer than that
+    depthClearValue: 1,
+    depthLoadOp: "clear",
+    depthStoreOp: "store",
+    // Apprarently the stencil ops are required in the depth stencil context even though it is not by the type
+    stencilLoadOp: "clear",
+    stencilStoreOp: "discard",
+};
 
 const uniformBuffer = device.createBuffer({
     // 4x4 Matrix -> 4x4xfloat32 -> 4x4x4 bytes
@@ -139,10 +174,11 @@ const pipeline = await device.createRenderPipelineAsync({
         entryPoint: "fragment_main",
         targets: [{ format }],
     },
-    layout: pipelineLayout,
     primitive: {
         topology: "triangle-list"
-    }
+    },
+    layout: pipelineLayout,
+    depthStencil: depthStencilState,
 });
 
 const projection = mat4.create();
@@ -234,6 +270,7 @@ const render = () => {
     device.queue.writeBuffer(uniformBuffer, 0, view as ArrayBuffer);
     device.queue.writeBuffer(uniformBuffer, 64, projection as ArrayBuffer);
 
+
     // Create a pass
     // "Basically a command buffer"
     const commandEncoder = device.createCommandEncoder();
@@ -246,7 +283,8 @@ const render = () => {
             clearValue: { r: .5, g: .5, b: .5, a: 1 },
             loadOp: "clear",
             storeOp: "store",
-        },]
+        },],
+        depthStencilAttachment,
     });
 
     renderPass.setPipeline(pipeline);
