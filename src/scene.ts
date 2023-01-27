@@ -31,10 +31,9 @@ function createTriangles() {
         mat4.translate(triangle.model, triangle.model, triangle.position);
 
         // Set the values in the object data byte array that represents the matrices for the model?
-        const matrix = mat4.create();
         // 16 because matrix is 4 x 4
         for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-            objectData[16 * modelIndex + byteIndex] = <number>matrix.at(byteIndex);
+            objectData[16 * modelIndex + byteIndex] = <number>triangle.model.at(byteIndex);
         }
     }
 
@@ -53,16 +52,15 @@ function createQuadrilaterals(objectData: Float32Array, offset: number) {
             // This could probably be put into the create function
             mat4.translate(quadliteral.model, quadliteral.model, quadliteral.position);
             // Set the values in the object data byte array that represents the matrices for the model?
-            const matrix = mat4.create();
             // 16 because matrix is 4 x 4
             for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-                objectData[16 * modelIndex + byteIndex] = <number>quadliteral.model.at(byteIndex); //<number>matrix.at(byteIndex);
+                objectData[16 * modelIndex + byteIndex] = <number>quadliteral.model.at(byteIndex);
             }
         }
 
 
     }
-    console.log(quadrilaterals.length)
+
     return { quadrilaterals, objectData };
 }
 export function create(): Scene {
