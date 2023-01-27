@@ -66,7 +66,7 @@ export function spinPlayer(scene: Scene, deltaX: number, deltaY: number): Scene 
 
     eulers[1] = Math.min(
         89,
-        Math.max(-89, eulers[1] + deltaY)
+        Math.max(-89, eulers[1] - deltaY)
     );
 
     return {
@@ -75,13 +75,14 @@ export function spinPlayer(scene: Scene, deltaX: number, deltaY: number): Scene 
     };
 }
 
-export function movePlayer(scene: Scene, forwardsAmount: number, rightAmount: number): Scene {
+export function movePlayer(scene: Scene, forwardsAmount: number, rightAmount: number, upAmount: number): Scene {
 
-    const { position, forwards, right } = scene.player;
+    const { position, forwards, right, up } = scene.player;
 
     vec3.scaleAndAdd(position, position, forwards, forwardsAmount);
     vec3.scaleAndAdd(position, position, right, rightAmount);
+    vec3.scaleAndAdd(position, position, up, upAmount);
 
 
-    return { ...scene, player: { ...scene.player, position, forwards, right } };
+    return { ...scene, player: { ...scene.player, position, forwards, right, up } };
 }

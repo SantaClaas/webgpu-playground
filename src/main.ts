@@ -189,51 +189,69 @@ const distance = { near: .1, far: 10 };
 mat4.perspective(projection, fieldOfView, aspectRatio, distance.near, distance.far);
 
 let scene = Scene.create();
-let forwardsAmount = 0;
-let rightAmount = 0;
+let moveForwardsAmount = 0;
+let moveRightAmount = 0;
+let moveUpAmount = 0;
 
 let spinPlayerX = 0;
 let spinPlayerY = 0;
 
 // CONTROLS
 document.addEventListener("keydown", (event) => {
-    switch (event.code) {
-        case "KeyW":
-            forwardsAmount = .02;
+    switch (event.key) {
+        case "q":
+        case " ":
+            moveUpAmount = .02;
             return;
-        case "KeyA":
-            rightAmount = -.02;
+        case "e":
+        case "Shift":
+            moveUpAmount = -.02;
             return;
-        case "KeyS":
-            forwardsAmount = -.02;
+        case "w":
+            moveForwardsAmount = .02;
             return;
-        case "KeyD":
-            rightAmount = .02;
+        case "a":
+            moveRightAmount = -.02;
+            return;
+        case "s":
+            moveForwardsAmount = -.02;
+            return;
+        case "d":
+            moveRightAmount = .02;
             return;
     }
 });
 
 document.addEventListener("keyup", (event) => {
-    switch (event.code) {
-        case "KeyW":
-            forwardsAmount = 0;
+    switch (event.key) {
+        case "q":
+        case " ":
+            moveUpAmount = 0;
             return;
-        case "KeyA":
-            rightAmount = 0;
+        case "e":
+        case "Shift":
+            moveUpAmount = 0;
             return;
-        case "KeyS":
-            forwardsAmount = 0;
+        case "w":
+            moveForwardsAmount = 0;
             return;
-        case "KeyD":
-            rightAmount = 0;
+        case "a":
+            moveRightAmount = 0;
+            return;
+        case "s":
+            moveForwardsAmount = 0;
+            return;
+        case "d":
+            moveRightAmount = 0;
             return;
     }
 });
 
 function handleMouseMove(event: MouseEvent) {
     spinPlayerX = event.movementX / 5;
-    spinPlayerY = -event.movementY / 5;
+    spinPlayerY = event.movementY / 5;
 }
+
 document.addEventListener("pointerlockchange", () => {
     // It is locked
     if (document.pointerLockElement === canvas) {
@@ -256,8 +274,8 @@ canvas.addEventListener("click", () => {
 
 const render = () => {
     scene = Scene.update(scene);
-    if (forwardsAmount !== 0 || rightAmount !== 0)
-        scene = Scene.movePlayer(scene, forwardsAmount, rightAmount);
+    if (moveForwardsAmount !== 0 || moveRightAmount !== 0 || moveUpAmount !== 0)
+        scene = Scene.movePlayer(scene, moveForwardsAmount, moveRightAmount, moveUpAmount);
 
     if (spinPlayerX !== 0 || spinPlayerY !== 0) {
         scene = Scene.spinPlayer(scene, spinPlayerX, spinPlayerY);
