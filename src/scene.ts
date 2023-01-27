@@ -17,7 +17,7 @@ interface Scene {
     objectData: Float32Array,
     triangleCount: number,
     quadLiteralsCount: number,
-    renderData : RenderData,
+    renderData: RenderData,
 }
 function createTriangles() {
     const triangles = [];
@@ -25,6 +25,10 @@ function createTriangles() {
     for (let y = -5, modelIndex = 0; y <= 5; y++, modelIndex++) {
         const triangle = Triangle.create([2, y, 0], 0);
         triangles.push(triangle);
+
+        // Translate to initial position
+        // This could probably be put into the create function
+        mat4.translate(triangle.model, triangle.model, triangle.position);
 
         // Set the values in the object data byte array that represents the matrices for the model?
         const matrix = mat4.create();
@@ -45,13 +49,17 @@ function createQuadrilaterals(objectData: Float32Array, offset: number) {
         for (let y = -10; y <= 10; y++, modelIndex++) {
             const quadliteral = Quadrilateral.create([x, y, 0]);
             quadrilaterals.push(quadliteral);
+            // Translate to initial position
+            // This could probably be put into the create function
+            mat4.translate(quadliteral.model, quadliteral.model, quadliteral.position);
+            // Set the values in the object data byte array that represents the matrices for the model?
+            const matrix = mat4.create();
+            // 16 because matrix is 4 x 4
+            for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
+                objectData[16 * modelIndex + byteIndex] = <number>quadliteral.model.at(byteIndex); //<number>matrix.at(byteIndex);
+            }
         }
-        // Set the values in the object data byte array that represents the matrices for the model?
-        const matrix = mat4.create();
-        // 16 because matrix is 4 x 4
-        for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-            objectData[16 * modelIndex + byteIndex] = <number>matrix.at(byteIndex);
-        }
+
 
     }
     console.log(quadrilaterals.length)
@@ -60,7 +68,7 @@ function createQuadrilaterals(objectData: Float32Array, offset: number) {
 export function create(): Scene {
     const { triangles, objectData } = createTriangles();
     // Bad side effect on object data here but will fix later™
-    const { quadrilaterals, objectData: newObjectData} = createQuadrilaterals(objectData, triangles.length);
+    const { quadrilaterals, objectData: newObjectData } = createQuadrilaterals(objectData, triangles.length);
     const playerCamera = Camera.create([-2, 0, .5], 0, 0);
     return {
         triangles,
@@ -92,18 +100,7 @@ export function update(scene: Scene): Scene {
         return triangle;
     });
 
-    const offset = triangles.length;
-    const quadrilaterals =scene.quadrilaterals.map((quadrilateral, modelIndex) => {
-
-        quadrilateral = Quadrilateral.update(quadrilateral);
-
-        // Side effect updating is bad. Need to change later 🙃
-        // Update the corresponding model data
-        for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-            objectData[16 * (modelIndex + offset) + byteIndex] = <number>quadrilateral.model.at(byteIndex);
-        }
-        return quadrilateral;
-    })
+    // We don't update quadrilaterals because they don't move and we translated them to their original position initally
 
     const newPlayerCamera = Camera.update(scene.player);
     // We don't update the quadrilaterals
@@ -111,7 +108,7 @@ export function update(scene: Scene): Scene {
         ...scene,
         objectData,
         triangles,
-        quadrilaterals,
+        // quadrilaterals,
         player: newPlayerCamera,
 
         renderData: {
