@@ -96,7 +96,7 @@ const materialGroupLayout = device.createBindGroupLayout({
         },],
 });
 
-const quadrilateralMaterial = await Material.create(device, "floor.jpg", materialGroupLayout);
+const quadrilateralMaterial = await Material.create(device, "Blazor.png", materialGroupLayout);
 if (!quadrilateralMaterial) {
     throw new Error("Could not create quadriliteral material")
 }

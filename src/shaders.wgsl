@@ -49,7 +49,10 @@ fn vertex_main(
 
 @fragment
 fn fragment_main(@location(0) texture_coordinate : vec2<f32>) -> @location(0) vec4<f32> {
-
-    // Sample
-   return textureSample(material_texture, texture_sampler, texture_coordinate);
+    let sampledValue = textureSample(material_texture, texture_sampler, texture_coordinate);
+    // My naive implementation to make texture transparent based on alpha of texture
+    if(sampledValue.w == 0){
+        discard;
+    }
+    return sampledValue;
 }
