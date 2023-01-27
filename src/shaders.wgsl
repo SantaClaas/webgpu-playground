@@ -1,15 +1,20 @@
 // Holds the transformation matrices
 struct TransformData {
-    model: mat4x4<f32>,
     view: mat4x4<f32>,
     projection: mat4x4<f32>,
 };
+
+// Holds all the model data for each triangle?
+struct ObjectData {
+    model: array<mat4x4<f32>>,
+}
 
 // Defining it as uniform makes it like a global value
 @binding(0) @group(0) var<uniform> transform_uniform_buffer_object : TransformData;
 // The texture and sampler
 @binding(1) @group(0) var material_texture : texture_2d<f32>;
 @binding(2) @group(0) var texture_sampler : sampler;
+@binding(3) @group(0) var<storage, read> objects : ObjectData;
 
 struct Fragment {
     @builtin(position) Position : vec4<f32>,
@@ -17,7 +22,10 @@ struct Fragment {
 };
 
 @vertex
-fn vertex_main(@location(0) vertex_position: vec3<f32>, @location(1) vertex_texture_coordinate : vec2<f32>) -> Fragment {
+fn vertex_main(
+    @builtin(instance_index) index_instance : u32,
+    @location(0) vertex_position : vec3<f32>,
+    @location(1) vertex_texture_coordinate : vec2<f32>) -> Fragment {
 
     var output : Fragment;
     // X, Y, Z from buffer and W as 1
@@ -27,7 +35,7 @@ fn vertex_main(@location(0) vertex_position: vec3<f32>, @location(1) vertex_text
             // Set to world to view coordinates (the camera point of view coordinates system)
             * transform_uniform_buffer_object.view
             // First set to from model coordinates to world coordinates
-            * transform_uniform_buffer_object.model
+            * objects.model[index_instance]
             * vec4<f32>(vertex_position, 1);
 
     // Append alpha channel of 1 to color to make it vector 4

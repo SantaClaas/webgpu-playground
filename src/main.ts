@@ -55,6 +55,15 @@ const shaderModule = device.createShaderModule({
 const triangleMesh = TriangleMesh.create(device);
 
 const material = await Material.create(device, "hugo.jpg");
+
+const modelBufferDescriptor: GPUBufferDescriptor = {
+    // A model matrix has 16 float32s (4x4) which is 16 * 4 bytes = 64 bytes per triangle
+    // We just say we want a lot of triangles and need a lot of space (1024)
+    size: 64 * 1024,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+};
+
+const objectBuffer = device.createBuffer(modelBufferDescriptor);
 if (!material) {
     throw new Error("Could not create material");
 }
@@ -62,8 +71,8 @@ if (!material) {
 
 const uniformBuffer = device.createBuffer({
     // 4x4 Matrix -> 4x4xfloat32 -> 4x4x4 bytes
-    // 3 matrices -> 4x4x4x3
-    size: 4 * 4 * 4 * 3,
+    // 2 matrices -> 4x4x4x2
+    size: 4 * 4 * 4 * 2,
     // Use as uniform and write data to it
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 });
@@ -83,6 +92,13 @@ const bindGroupLayout = device.createBindGroupLayout({
         binding: 2,
         visibility: GPUShaderStage.FRAGMENT,
         sampler: {},
+    }, {
+        binding: 3,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: {
+            type: "read-only-storage",
+            hasDynamicOffset: false,
+        },
     },],
 });
 
@@ -99,6 +115,11 @@ const bindGroup = device.createBindGroup({
     }, {
         binding: 2,
         resource: material.sampler,
+    }, {
+        binding: 3,
+        resource: {
+            buffer: objectBuffer,
+        },
     },],
     layout: bindGroupLayout,
 });
@@ -140,8 +161,6 @@ let spinPlayerY = 0;
 
 // CONTROLS
 document.addEventListener("keydown", (event) => {
-
-    console.log(event.code);
     switch (event.code) {
         case "KeyW":
             forwardsAmount = .02;
@@ -211,8 +230,9 @@ const render = () => {
 
     const view = scene.player.view;
 
-    device.queue.writeBuffer(uniformBuffer, 64, view as ArrayBuffer);
-    device.queue.writeBuffer(uniformBuffer, 128, projection as ArrayBuffer);
+    device.queue.writeBuffer(objectBuffer, 0, scene.objectData, 0, scene.objectData.length);
+    device.queue.writeBuffer(uniformBuffer, 0, view as ArrayBuffer);
+    device.queue.writeBuffer(uniformBuffer, 64, projection as ArrayBuffer);
 
     // Create a pass
     // "Basically a command buffer"
@@ -231,13 +251,8 @@ const render = () => {
 
     renderPass.setPipeline(pipeline);
     renderPass.setVertexBuffer(0, triangleMesh.buffer);
-    scene.triangles.forEach(({ model }) => {
-        // Model transform
-        device.queue.writeBuffer(uniformBuffer, 0, model as ArrayBuffer);
-        renderPass.setBindGroup(0, bindGroup);
-        renderPass.draw(3, 1, 0, 0);
-    });
-
+    renderPass.setBindGroup(0, bindGroup);
+    renderPass.draw(3, scene.triangleCount, 0, 0);
     renderPass.end();
 
     device.queue.submit([commandEncoder.finish()]);
