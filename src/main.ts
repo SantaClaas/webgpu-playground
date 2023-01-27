@@ -1,6 +1,7 @@
 // Try this with fable later 🤔 https://fable.io/docs/communicate/js-from-fable.html#importing-relative-paths-when-using-an-output-directory
 import shader from "./shaders.wgsl?raw";
 import * as TriangleMesh from "./triangleMesh";
+import * as QuadrilateralMesh from "./quadrilateralMesh";
 import * as Material from "./material";
 import { mat4, ReadonlyVec3 } from "gl-matrix";
 import * as Triangle from "./triangle";
@@ -53,10 +54,16 @@ const shaderModule = device.createShaderModule({
 
 // Bind groups & pipeline -> render pass ?
 const triangleMesh = TriangleMesh.create(device);
+const quadrilateralMesh = QuadrilateralMesh.create(device);
 
-const material = await Material.create(device, "hugo.jpg");
-if (!material) {
-    throw new Error("Could not create material");
+const quadrilateralMaterial = await Material.create(device, "floor.jpg");
+if (!quadrilateralMaterial) {
+    throw new Error("Could not create quadriliteral material")
+}
+
+const triangleMaterial = await Material.create(device, "hugo.jpg");
+if (!triangleMaterial) {
+    throw new Error("Could not create triangle material");
 }
 
 
@@ -138,24 +145,53 @@ const bindGroupLayout = device.createBindGroupLayout({
 });
 
 // Which things go into the group
-const bindGroup = device.createBindGroup({
-    entries: [{
-        binding: 0,
-        resource: {
-            buffer: uniformBuffer,
+const triangleBindGroup = device.createBindGroup({
+    entries: [
+        {
+            binding: 0,
+            resource: {
+                buffer: uniformBuffer,
+            },
         },
-    }, {
-        binding: 1,
-        resource: material.view,
-    }, {
-        binding: 2,
-        resource: material.sampler,
-    }, {
-        binding: 3,
-        resource: {
-            buffer: objectBuffer,
+        {
+            binding: 1,
+            resource: triangleMaterial.view,
         },
-    },],
+        {
+            binding: 2,
+            resource: triangleMaterial.sampler,
+        },
+        {
+            binding: 3,
+            resource: {
+                buffer: objectBuffer,
+            },
+        },],
+    layout: bindGroupLayout,
+});
+
+const quadrilateralBindGroup = device.createBindGroup({
+    entries: [
+        {
+            binding: 0,
+            resource: {
+                buffer: uniformBuffer,
+            },
+        },
+        {
+            binding: 1,
+            resource: quadrilateralMaterial.view,
+        },
+        {
+            binding: 2,
+            resource: quadrilateralMaterial.sampler,
+        },
+        {
+            binding: 3,
+            resource: {
+                buffer: objectBuffer,
+            },
+        },],
     layout: bindGroupLayout,
 });
 
@@ -261,6 +297,7 @@ document.addEventListener("pointerlockchange", () => {
 
     document.removeEventListener("mousemove", handleMouseMove);
 })
+
 canvas.addEventListener("click", () => {
 
     if (document.pointerLockElement !== canvas) {
@@ -282,9 +319,9 @@ const render = () => {
         spinPlayerX = spinPlayerY = 0;
     }
 
-    const view = scene.player.view;
+    const view = scene.renderData.viewTransform;
 
-    device.queue.writeBuffer(objectBuffer, 0, scene.objectData, 0, scene.objectData.length);
+    device.queue.writeBuffer(objectBuffer, 0, scene.renderData.modelTransforms, 0, scene.renderData.modelTransforms.length);
     device.queue.writeBuffer(uniformBuffer, 0, view as ArrayBuffer);
     device.queue.writeBuffer(uniformBuffer, 64, projection as ArrayBuffer);
 
@@ -306,9 +343,19 @@ const render = () => {
     });
 
     renderPass.setPipeline(pipeline);
+
+    // Triangles
     renderPass.setVertexBuffer(0, triangleMesh.buffer);
-    renderPass.setBindGroup(0, bindGroup);
-    renderPass.draw(3, scene.triangleCount, 0, 0);
+    renderPass.setBindGroup(0, triangleBindGroup);
+    renderPass.draw(3, scene.renderData.countTriangles, 0, 0);
+
+    // Quadrilaterals
+    renderPass.setVertexBuffer(0, quadrilateralMesh.buffer);
+    renderPass.setBindGroup(0, quadrilateralBindGroup);
+
+    // 6 is count of vertices
+    renderPass.draw(6, scene.renderData.countQuadrilaterals, 0, scene.renderData.countTriangles);
+
     renderPass.end();
 
     device.queue.submit([commandEncoder.finish()]);
