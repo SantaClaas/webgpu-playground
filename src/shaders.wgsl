@@ -11,10 +11,11 @@ struct ObjectData {
 
 // Defining it as uniform makes it like a global value
 @binding(0) @group(0) var<uniform> transform_uniform_buffer_object : TransformData;
+@binding(1) @group(0) var<storage, read> objects : ObjectData;
+
 // The texture and sampler
-@binding(1) @group(0) var material_texture : texture_2d<f32>;
-@binding(2) @group(0) var texture_sampler : sampler;
-@binding(3) @group(0) var<storage, read> objects : ObjectData;
+@binding(0) @group(1) var material_texture : texture_2d<f32>;
+@binding(1) @group(1) var texture_sampler : sampler;
 
 struct Fragment {
     @builtin(position) Position : vec4<f32>,

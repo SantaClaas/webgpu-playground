@@ -53,15 +53,55 @@ const shaderModule = device.createShaderModule({
 })
 
 // Bind groups & pipeline -> render pass ?
+// MESHES
 const triangleMesh = TriangleMesh.create(device);
 const quadrilateralMesh = QuadrilateralMesh.create(device);
+// BIND GROUP LAYOUTS
 
-const quadrilateralMaterial = await Material.create(device, "floor.jpg");
+// Description/Layout of the binding groups?
+// Frame as in frame of a building or model (?)
+const frameGroupLayout = device.createBindGroupLayout({
+    entries: [
+        {
+            // The uniform buffer?
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX,
+            // Tell it is a buffer ressource
+            buffer: {},
+        },
+        {
+            // And the storage buffer?
+            binding: 1,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: {
+                type: "read-only-storage",
+                hasDynamicOffset: false,
+            },
+        },],
+});
+
+const materialGroupLayout = device.createBindGroupLayout({
+    entries: [
+        {
+            // The texture
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: {},
+        },
+        {
+            // And the sampler
+            binding: 1,
+            visibility: GPUShaderStage.FRAGMENT,
+            sampler: {},
+        },],
+});
+
+const quadrilateralMaterial = await Material.create(device, "floor.jpg", materialGroupLayout);
 if (!quadrilateralMaterial) {
     throw new Error("Could not create quadriliteral material")
 }
 
-const triangleMaterial = await Material.create(device, "hugo.jpg");
+const triangleMaterial = await Material.create(device, "hugo.jpg", materialGroupLayout);
 if (!triangleMaterial) {
     throw new Error("Could not create triangle material");
 }
@@ -119,84 +159,28 @@ const uniformBuffer = device.createBuffer({
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 });
 
-// Description/Layout of the binding groups?
-const bindGroupLayout = device.createBindGroupLayout({
-    entries: [{
-        binding: 0,
-        visibility: GPUShaderStage.VERTEX,
-        // Tell it is a buffer ressource
-        buffer: {},
-    }, {
-        binding: 1,
-        visibility: GPUShaderStage.FRAGMENT,
-        texture: {},
-    }, {
-        binding: 2,
-        visibility: GPUShaderStage.FRAGMENT,
-        sampler: {},
-    }, {
-        binding: 3,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: {
-            type: "read-only-storage",
-            hasDynamicOffset: false,
-        },
-    },],
-});
-
 // Which things go into the group
-const triangleBindGroup = device.createBindGroup({
+const frameBindGroup = device.createBindGroup({
+    layout: frameGroupLayout,
     entries: [
         {
+            // Uniformbuffer
             binding: 0,
             resource: {
                 buffer: uniformBuffer,
             },
         },
         {
+            // Storage buffer
             binding: 1,
-            resource: triangleMaterial.view,
-        },
-        {
-            binding: 2,
-            resource: triangleMaterial.sampler,
-        },
-        {
-            binding: 3,
             resource: {
                 buffer: objectBuffer,
             },
         },],
-    layout: bindGroupLayout,
-});
-
-const quadrilateralBindGroup = device.createBindGroup({
-    entries: [
-        {
-            binding: 0,
-            resource: {
-                buffer: uniformBuffer,
-            },
-        },
-        {
-            binding: 1,
-            resource: quadrilateralMaterial.view,
-        },
-        {
-            binding: 2,
-            resource: quadrilateralMaterial.sampler,
-        },
-        {
-            binding: 3,
-            resource: {
-                buffer: objectBuffer,
-            },
-        },],
-    layout: bindGroupLayout,
 });
 
 const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [bindGroupLayout]
+    bindGroupLayouts: [frameGroupLayout, materialGroupLayout,],
 })
 
 const pipeline = await device.createRenderPipelineAsync({
@@ -343,15 +327,18 @@ const render = () => {
     });
 
     renderPass.setPipeline(pipeline);
+    renderPass.setBindGroup(0, frameBindGroup);
 
     // Triangles
     renderPass.setVertexBuffer(0, triangleMesh.buffer);
-    renderPass.setBindGroup(0, triangleBindGroup);
+    // This binds the triangle material to the material bind group
+    renderPass.setBindGroup(1, triangleMaterial.bindGroup);
     renderPass.draw(3, scene.renderData.countTriangles, 0, 0);
 
     // Quadrilaterals
     renderPass.setVertexBuffer(0, quadrilateralMesh.buffer);
-    renderPass.setBindGroup(0, quadrilateralBindGroup);
+    // This binds the quadrilateral material to the material bind group
+    renderPass.setBindGroup(1, quadrilateralMaterial.bindGroup);
 
     // 6 is count of vertices
     renderPass.draw(6, scene.renderData.countQuadrilaterals, 0, scene.renderData.countTriangles);
