@@ -4,10 +4,8 @@ interface Material {
     sampler: GPUSampler,
     bindGroup: GPUBindGroup,
 }
-
-export async function create(device: GPUDevice, url: string, bindGroupLayout: GPUBindGroupLayout): Promise<Material | null> {
-    //TODO move outside of create https://github.com/santaclaas.png
-    // https://scontent-dus1-1.cdninstagram.com/v/t51.2885-15/38924142_1084915804990997_6341342835417022464_n.jpg?stp=dst-jpg_e35&_nc_ht=scontent-dus1-1.cdninstagram.com&_nc_cat=105&_nc_ohc=v72Kv8Uh1WIAX_tuXyf&edm=ACWDqb8BAAAA&ccb=7-5&ig_cache_key=MTg1MDQ5NzI5ODQ5NDk5MjUxOQ%3D%3D.2-ccb7-5&oh=00_AfCgKhyo3U6Z6MXz-8tuJAIs4lIbIT96C9-rlWyppisEPA&oe=63D789E7&_nc_sid=1527a3
+export async function fetchTexture(url:string) : Promise<ImageBitmap | null> {
+    
     let response;
     try {
 
@@ -20,6 +18,10 @@ export async function create(device: GPUDevice, url: string, bindGroupLayout: GP
     const blob = await response.blob();
     const imageData = await createImageBitmap(blob);
 
+    return imageData;
+}
+export async function create(device: GPUDevice, imageData : ImageBitmap, bindGroupLayout: GPUBindGroupLayout): Promise<Material> {
+    
     const texture = await loadImageBitmap(device, imageData);
     const viewDescriptor: GPUTextureViewDescriptor = {
         format: "rgba8unorm",
