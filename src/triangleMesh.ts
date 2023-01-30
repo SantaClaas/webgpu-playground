@@ -6,14 +6,15 @@ interface TriangleMesh {
     bufferLayout: GPUVertexBufferLayout,
 }
 
-export function create(device: GPUDevice) : TriangleMesh {
+export function create(device: GPUDevice): TriangleMesh {
     // Layout is X, Y, Z, R, U, V
     // U, V are texture coordinates
     const vertices = new Float32Array(
         [
-           0, 0, .5, .5, 0,
-           0, -.5, -.5, 0, 1,
-           0, .5, -.5, 1, 1,
+            // X, Y, Z         U, V
+            0, 0, .5,   /* */ .5, 0,
+            0, -.5, -.5,/* */ .0, 1,
+            0, .5, -.5, /* */ 1, 1,
         ]
     );
 
@@ -37,7 +38,7 @@ export function create(device: GPUDevice) : TriangleMesh {
     new Float32Array(buffer.getMappedRange()).set(vertices);
     // Close it
     buffer.unmap();
-    
+
 
     // Define buffer layout
     const bufferLayout: GPUVertexBufferLayout = {

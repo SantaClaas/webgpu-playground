@@ -3,15 +3,14 @@ import shader from "./shaders.wgsl?raw";
 import * as TriangleMesh from "./triangleMesh";
 import * as QuadrilateralMesh from "./quadrilateralMesh";
 import * as Material from "./material";
-import { mat4, ReadonlyVec3 } from "gl-matrix";
-import * as Triangle from "./triangle";
-import * as Camera from "./camera";
+import { mat4 } from "gl-matrix";
 import * as Scene from "./scene";
+import { configureControls } from "./controls";
+import { createDepthStencil } from "./depthStencil";
 
 
 // Pixel format of the screen and the color buffer
 const format: GPUTextureFormat = "bgra8unorm";
-
 function configureCanvas(canvas: HTMLCanvasElement, device: GPUDevice) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -27,6 +26,18 @@ function configureCanvas(canvas: HTMLCanvasElement, device: GPUDevice) {
     });
 
     return context;
+}
+
+
+function createProjection(aspectRatio: number) {
+
+    const projection = mat4.create();
+    // 45 degree in radians 
+    const fieldOfView = Math.PI / 4;
+    const distance = { near: .1, far: 20 };
+    mat4.perspective(projection, fieldOfView, aspectRatio, distance.near, distance.far);
+
+    return projection;
 }
 
 console.log("🏃💨🏎️💨");
@@ -115,10 +126,6 @@ if (!hugoImage) {
 const quadrilateralMaterial = await Material.create(device, floorImage, materialGroupLayout);
 
 const triangleMaterial = await Material.create(device, hugoImage, materialGroupLayout);
-if (!triangleMaterial) {
-    throw new Error("Could not create triangle material");
-}
-
 
 const modelBufferDescriptor: GPUBufferDescriptor = {
     // A model matrix has 16 float32s (4x4) which is 16 * 4 bytes = 64 bytes per triangle
@@ -129,40 +136,7 @@ const modelBufferDescriptor: GPUBufferDescriptor = {
 
 const objectBuffer = device.createBuffer(modelBufferDescriptor);
 
-// Make depth buffer resources
-// Depth stencil
-const depthStencilState: GPUDepthStencilState = {
-    format: "depth24plus-stencil8",
-    depthWriteEnabled: true,
-    depthCompare: "less-equal",
-};
-
-const depthStencilBufferDescriptor: GPUTextureDescriptor = {
-    size: {
-        width: canvas.width,
-        height: canvas.height,
-        depthOrArrayLayers: 1,
-    },
-    format: "depth24plus-stencil8",
-    usage: GPUTextureUsage.RENDER_ATTACHMENT,
-
-};
-const depthStencilBuffer = device.createTexture(depthStencilBufferDescriptor);
-const depthStencilView = depthStencilBuffer.createView({
-    format: "depth24plus-stencil8",
-    dimension: "2d",
-    aspect: "all",
-});
-const depthStencilAttachment: GPURenderPassDepthStencilAttachment = {
-    view: depthStencilView,
-    // 1 is the maximum depth and we want to draw things that are closer than that
-    depthClearValue: 1,
-    depthLoadOp: "clear",
-    depthStoreOp: "store",
-    // Apprarently the stencil ops are required in the depth stencil context even though it is not by the type
-    stencilLoadOp: "clear",
-    stencilStoreOp: "discard",
-};
+const { depthStencilAttachment, depthStencilState } = createDepthStencil(device, canvas.width, canvas.height);
 
 const uniformBuffer = device.createBuffer({
     // 4x4 Matrix -> 4x4xfloat32 -> 4x4x4 bytes
@@ -208,150 +182,26 @@ const pipeline = await device.createRenderPipelineAsync({
         targets: [{ format }],
     },
     primitive: {
-        topology: "triangle-list"
+        topology: "triangle-list",
     },
     layout: pipelineLayout,
     depthStencil: depthStencilState,
 });
 
-function createProjection(canvas: HTMLCanvasElement) {
-
-    const projection = mat4.create();
-    // 45 degree in radians 
-    const fieldOfView = Math.PI / 4;
-    const aspectRatio = canvas.width / canvas.height;
-    const distance = { near: .1, far: 20 };
-    mat4.perspective(projection, fieldOfView, aspectRatio, distance.near, distance.far);
-
-    return projection;
-}
-
-function configureControls(canvas: HTMLCanvasElement) {
-
-    let moveForwardsAmount = 0;
-    let moveRightAmount = 0;
-    let moveUpAmount = 0;
-
-    let spinPlayerX = 0;
-    let spinPlayerY = 0;
-
-    function getUserInputs() {
-        const getUserInputs = {
-            moveForwardsAmount,
-            moveRightAmount,
-            moveUpAmount,
-            spinPlayerX,
-            spinPlayerY,
-        };
-
-        // Reset spin
-        spinPlayerX = spinPlayerY = 0;
-
-        return getUserInputs;
-    }
-
-
-    // CONTROLS
-    document.addEventListener("keydown", (event) => {
-        switch (event.key) {
-            case "Q":
-            case "q":
-            case " ":
-                moveUpAmount = .02;
-                return;
-            case "E":
-            case "e":
-            case "Shift":
-                moveUpAmount = -.02;
-                return;
-            case "W":
-            case "w":
-                moveForwardsAmount = .02;
-                return;
-            case "A":
-            case "a":
-                moveRightAmount = -.02;
-                return;
-            case "S":
-            case "s":
-                moveForwardsAmount = -.02;
-                return;
-            case "D":
-            case "d":
-                moveRightAmount = .02;
-                return;
-        }
-    });
-
-    document.addEventListener("keyup", (event) => {
-
-        switch (event.key) {
-            case "Q":
-            case "q":
-            case " ":
-                moveUpAmount = 0;
-                return;
-            case "E":
-            case "e":
-            case "Shift":
-                moveUpAmount = 0;
-                return;
-            case "W":
-            case "w":
-                moveForwardsAmount = 0;
-                return;
-            case "A":
-            case "a":
-                moveRightAmount = 0;
-                return;
-            case "S":
-            case "s":
-                moveForwardsAmount = 0;
-                return;
-            case "D":
-            case "d":
-                moveRightAmount = 0;
-                return;
-        }
-    });
-
-    function handleMouseMove(event: MouseEvent) {
-        spinPlayerX = event.movementX / 5;
-        spinPlayerY = event.movementY / 5;
-    }
-
-    document.addEventListener("pointerlockchange", () => {
-        // It is locked
-        if (document.pointerLockElement === canvas) {
-            document.addEventListener("mousemove", handleMouseMove);
-            return;
-        }
-
-        document.removeEventListener("mousemove", handleMouseMove);
-    })
-
-    canvas.addEventListener("click", () => {
-
-        if (document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock();
-            return;
-        }
-
-        // Other click handling
-    });
-
-
-    return getUserInputs;
-}
-
 const getUserInputs = configureControls(canvas);
 
 let scene = Scene.create();
-const projection = createProjection(canvas);
+const aspectRatio = canvas.width / canvas.height;
+const projection = createProjection(aspectRatio);
 
 // RENDER
+const frameCounter = document.querySelector("p");
+let lastTimestamp = 0;
+const render = (timestamp : DOMHighResTimeStamp) => {
+    
+    frameCounter!.innerText = Math.floor(1000/ (timestamp - lastTimestamp)).toString();
+    lastTimestamp = timestamp;
 
-const render = () => {
     scene = Scene.update(scene);
 
     const { moveForwardsAmount, moveRightAmount, moveUpAmount, spinPlayerX, spinPlayerY } = getUserInputs();

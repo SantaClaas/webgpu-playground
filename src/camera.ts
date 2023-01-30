@@ -1,4 +1,4 @@
-import { vec3, mat4, vec2 } from "gl-matrix"
+import { vec3, mat4 } from "gl-matrix"
 import { degreeToRadian } from "./mathy";
 
 export interface Camera {

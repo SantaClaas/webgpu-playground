@@ -14,11 +14,11 @@ interface Scene {
     triangles: Triangle.Triangle[],
     quadrilaterals: Quadrilateral.Quadrilateral[],
     player: Camera.Camera,
-    objectData: Float32Array,
     triangleCount: number,
     quadLiteralsCount: number,
     renderData: RenderData,
 }
+
 function createTriangles() {
     const triangles = [];
     const objectData = new Float32Array(16 * 1024);
@@ -27,7 +27,6 @@ function createTriangles() {
         triangles.push(triangle);
 
         // Translate to initial position
-        // This could probably be put into the create function
         mat4.translate(triangle.model, triangle.model, triangle.position);
 
         // Set the values in the object data byte array that represents the matrices for the model?
@@ -49,7 +48,6 @@ function createQuadrilaterals(objectData: Float32Array, offset: number) {
             const quadliteral = Quadrilateral.create([x, y, 0]);
             quadrilaterals.push(quadliteral);
             // Translate to initial position
-            // This could probably be put into the create function
             mat4.translate(quadliteral.model, quadliteral.model, quadliteral.position);
             // Set the values in the object data byte array that represents the matrices for the model?
             // 16 because matrix is 4 x 4
@@ -57,8 +55,6 @@ function createQuadrilaterals(objectData: Float32Array, offset: number) {
                 objectData[16 * modelIndex + byteIndex] = <number>quadliteral.model.at(byteIndex);
             }
         }
-
-
     }
 
     return { quadrilaterals, objectData };
@@ -71,7 +67,6 @@ export function create(): Scene {
     return {
         triangles,
         player: playerCamera,
-        objectData: newObjectData,
         triangleCount: triangles.length,
         quadrilaterals,
         quadLiteralsCount: quadrilaterals.length,
@@ -85,14 +80,14 @@ export function create(): Scene {
 }
 
 export function update(scene: Scene): Scene {
-    const { objectData } = scene;
+    const { renderData: {modelTransforms} } = scene;
     const triangles = scene.triangles.map((triangle, modelIndex) => {
         triangle = Triangle.update(triangle);
 
         // Side effect updating is bad. Need to change later 🙃
         // Update the corresponding model data
         for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-            objectData[16 * modelIndex + byteIndex] = <number>triangle.model.at(byteIndex);
+            modelTransforms[16 * modelIndex + byteIndex] = <number>triangle.model.at(byteIndex);
         }
 
         return triangle;
@@ -104,14 +99,12 @@ export function update(scene: Scene): Scene {
     // We don't update the quadrilaterals
     return {
         ...scene,
-        objectData,
         triangles,
-        // quadrilaterals,
         player: newPlayerCamera,
 
         renderData: {
             ...scene.renderData,
-            modelTransforms: objectData,
+            modelTransforms,
             viewTransform: newPlayerCamera.view,
         }
     }
