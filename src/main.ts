@@ -1,13 +1,12 @@
 // Try this with fable later 🤔 https://fable.io/docs/communicate/js-from-fable.html#importing-relative-paths-when-using-an-output-directory
 import shader from "./shaders.wgsl?raw";
-import * as TriangleMesh from "./triangleMesh";
-import * as QuadrilateralMesh from "./quadrilateralMesh";
 import * as Material from "./material";
 import { mat4 } from "gl-matrix";
 import * as Scene from "./scene";
 import { configureControls } from "./controls";
 import { createDepthStencil } from "./depthStencil";
-
+import * as Mesh from "./mesh"
+import {setUpFrameCounter} from "./frameCounter"
 
 // Pixel format of the screen and the color buffer
 const format: GPUTextureFormat = "bgra8unorm";
@@ -71,8 +70,8 @@ const shaderModule = device.createShaderModule({
 
 // Bind groups & pipeline -> render pass ?
 // MESHES
-const triangleMesh = TriangleMesh.create(device);
-const quadrilateralMesh = QuadrilateralMesh.create(device);
+const triangleMesh = Mesh.createTriangleMesh();
+const quadrilateralMesh = Mesh.createQuadrilateralMesh();
 // BIND GROUP LAYOUTS
 
 // Description/Layout of the binding groups?
@@ -174,7 +173,7 @@ const pipeline = await device.createRenderPipelineAsync({
     vertex: {
         module: shaderModule,
         entryPoint: "vertex_main",
-        buffers: [triangleMesh.bufferLayout,],
+        buffers: [Mesh.createMeshBufferLayout(triangleMesh)],
     },
     fragment: {
         module: shaderModule,
@@ -194,13 +193,13 @@ let scene = Scene.create();
 const aspectRatio = canvas.width / canvas.height;
 const projection = createProjection(aspectRatio);
 
+// Buffers
+const triangleMeshBuffer = Mesh.createMeshBuffer(device, triangleMesh);
+const quadrilateralMeshBuffer = Mesh.createMeshBuffer(device, quadrilateralMesh);
 // RENDER
-const frameCounter = document.querySelector("p");
-let lastTimestamp = 0;
-const render = (timestamp : DOMHighResTimeStamp) => {
-    
-    frameCounter!.innerText = Math.floor(1000/ (timestamp - lastTimestamp)).toString();
-    lastTimestamp = timestamp;
+const updateTime = setUpFrameCounter();
+const render = (timestamp: DOMHighResTimeStamp) => {
+    updateTime(timestamp);
 
     scene = Scene.update(scene);
 
@@ -239,13 +238,13 @@ const render = (timestamp : DOMHighResTimeStamp) => {
     renderPass.setBindGroup(0, frameBindGroup);
 
     // Triangles
-    renderPass.setVertexBuffer(0, triangleMesh.buffer);
+    renderPass.setVertexBuffer(0, triangleMeshBuffer);
     // This binds the triangle material to the material bind group
     renderPass.setBindGroup(1, triangleMaterial.bindGroup);
     renderPass.draw(3, scene.renderData.countTriangles, 0, 0);
 
     // Quadrilaterals
-    renderPass.setVertexBuffer(0, quadrilateralMesh.buffer);
+    renderPass.setVertexBuffer(0, quadrilateralMeshBuffer);
     // This binds the quadrilateral material to the material bind group
     renderPass.setBindGroup(1, quadrilateralMaterial.bindGroup);
 

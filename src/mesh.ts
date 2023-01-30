@@ -1,12 +1,8 @@
-interface TriangleMesh {
-
-    // The handle to the vertex memory
-    buffer: GPUBuffer,
-    // What the data means 
-    bufferLayout: GPUVertexBufferLayout,
+interface Mesh {
+    vertices: Float32Array;
 }
 
-export function create(device: GPUDevice): TriangleMesh {
+export function createTriangleMesh(): Mesh {
     // Layout is X, Y, Z, R, U, V
     // U, V are texture coordinates
     const vertices = new Float32Array(
@@ -17,6 +13,30 @@ export function create(device: GPUDevice): TriangleMesh {
             0, .5, -.5, /* */ 1, 1,
         ]
     );
+
+    return { vertices };
+}
+
+export function createQuadrilateralMesh(): Mesh {
+    // Layout is X, Y, Z, R, U, V
+    // U, V are texture coordinates
+    const vertices = new Float32Array(
+        [
+            // X, Y, Z          U, V
+            -.5, -.5, 0,/* */ 0, 0,
+            .5, -.5, 0, /* */ 1, 0,
+            .5, .5, 0,  /* */ 1, 1,
+
+            .5, .5, 0,  /* */ 1, 1,
+            -.5, .5, 0, /* */ 0, 1,
+            -.5, -.5, 0,/* */ 0, 0,
+        ]
+    );
+
+    return { vertices };
+}
+
+export function createMeshBuffer(device: GPUDevice, { vertices }: Mesh) {
 
     // Visible to the vertex shader/can be uses as a veretx buffer
     // and we can copy data to it
@@ -39,7 +59,10 @@ export function create(device: GPUDevice): TriangleMesh {
     // Close it
     buffer.unmap();
 
+    return buffer;
+}
 
+export function createMeshBufferLayout(_: Mesh) {
     // Define buffer layout
     const bufferLayout: GPUVertexBufferLayout = {
         // How many bytes we need to step to get to the next vertex
@@ -68,9 +91,5 @@ export function create(device: GPUDevice): TriangleMesh {
         ]
     };
 
-
-    return {
-        buffer,
-        bufferLayout
-    };
+    return bufferLayout;
 }
