@@ -6,7 +6,8 @@ import * as Scene from "./scene";
 import { configureControls } from "./controls";
 import { createDepthStencil } from "./depthStencil";
 import * as Mesh from "./mesh"
-import {setUpFrameCounter} from "./frameCounter"
+import { setUpFrameCounter } from "./frameCounter"
+import { saveCamera, loadCamera } from "./save";
 
 // Pixel format of the screen and the color buffer
 const format: GPUTextureFormat = "bgra8unorm";
@@ -72,6 +73,7 @@ const shaderModule = device.createShaderModule({
 // MESHES
 const triangleMesh = Mesh.createTriangleMesh();
 const quadrilateralMesh = Mesh.createQuadrilateralMesh();
+const cubeMesh = Mesh.createCubeMesh();
 // BIND GROUP LAYOUTS
 
 // Description/Layout of the binding groups?
@@ -188,14 +190,24 @@ const pipeline = await device.createRenderPipelineAsync({
 });
 
 const getUserInputs = configureControls(canvas);
-
-let scene = Scene.create();
+// Try load previous camera
+const camera = loadCamera();
+let scene = Scene.create(camera);
 const aspectRatio = canvas.width / canvas.height;
 const projection = createProjection(aspectRatio);
 
 // Buffers
 const triangleMeshBuffer = Mesh.createMeshBuffer(device, triangleMesh);
 const quadrilateralMeshBuffer = Mesh.createMeshBuffer(device, quadrilateralMesh);
+const cubeMeshBuffer = Mesh.createMeshBuffer(device, cubeMesh);
+
+// Save camera position every 5 seconds
+setInterval(() => {
+    // Hope we don't catch an intermediate while saving 😅
+    //TODO: optimize to save only when moving
+    saveCamera(scene.player);
+}, 5_000)
+
 // RENDER
 const updateTime = setUpFrameCounter();
 const render = (timestamp: DOMHighResTimeStamp) => {
@@ -203,6 +215,7 @@ const render = (timestamp: DOMHighResTimeStamp) => {
 
     scene = Scene.update(scene);
 
+    // Take user input and apply their effect
     const { moveForwardsAmount, moveRightAmount, moveUpAmount, spinPlayerX, spinPlayerY } = getUserInputs();
     if (moveForwardsAmount !== 0 || moveRightAmount !== 0 || moveUpAmount !== 0)
         scene = Scene.movePlayer(scene, moveForwardsAmount, moveRightAmount, moveUpAmount);
@@ -250,6 +263,12 @@ const render = (timestamp: DOMHighResTimeStamp) => {
 
     // 6 is count of vertices
     renderPass.draw(6, scene.renderData.countQuadrilaterals, 0, scene.renderData.countTriangles);
+
+
+    // Cube
+    renderPass.setVertexBuffer(0, cubeMeshBuffer);
+    renderPass.setBindGroup(1, triangleMaterial.bindGroup);
+    renderPass.draw(36, scene.renderData.countCubes, 0, scene.renderData.countTriangles + scene.renderData.countQuadrilaterals)
 
     renderPass.end();
 

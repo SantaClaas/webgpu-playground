@@ -1,3 +1,5 @@
+import { vec3 } from "gl-matrix";
+
 interface Mesh {
     vertices: Float32Array;
 }
@@ -30,6 +32,80 @@ export function createQuadrilateralMesh(): Mesh {
             .5, .5, 0,  /* */ 1, 1,
             -.5, .5, 0, /* */ 0, 1,
             -.5, -.5, 0,/* */ 0, 0,
+        ]
+    );
+
+    return { vertices };
+}
+
+export function createCubeMesh(): Mesh {
+
+    const d: vec3 = [-.5, -.5, .5];
+    const h: vec3 = [.5, -.5, .5];
+    const a: vec3 = [-.5, .5, .5];
+    const e: vec3 = [.5, .5, .5];
+    const c: vec3 = [-.5, -.5, -.5];
+    const g: vec3 = [.5, -.5, -.5];
+    const f: vec3 = [.5, .5, -.5];
+    const b: vec3 = [-.5, .5, -.5,];
+    // Layout is X, Y, Z, R, U, V
+    // U, V are texture coordinates
+    const vertices = new Float32Array(
+        [
+            // X, Y, Z          U, V
+            // Front
+            ...a,/* */ 0, 0,
+            ...b, /* */ 0, 1,
+            ...d,  /* */ 1, 0,
+
+            ...b,  /* */ 0, 1,
+            ...c, /* */ 1, 1,
+            ...d,/* */ 1, 0,
+
+            // Back face
+            ...h,/* */ 0, 0,
+            ...g, /* */ 0, 1,
+            ...e,  /* */ 1, 0,
+
+            ...g,  /* */ 0, 1,
+            ...f,/* */ 1, 1,
+            ...e,/* */ 1, 0,
+
+            // Right side
+            ...d, /* */ 0, 0,
+            ...c, /* */ 0, 1,
+            ...h, /* */ 1, 0,
+
+            ...c, /* */ 0, 1,
+            ...g, /* */ 1, 1,
+            ...h, /* */ 1, 0,
+
+            // Left side
+            ...e, /* */ 0, 0,
+            ...f, /* */ 0, 1,
+            ...a, /* */ 1, 0,
+
+            ...f, /* */ 0, 1,
+            ...b, /* */ 1, 1,
+            ...a, /* */ 1, 0,
+
+            // Top
+            ...e, /* */ 0,0,
+            ...a, /* */ 0,1,
+            ...h, /* */ 1,0,
+
+            ...a, /* */ 0,1,
+            ...d, /* */ 1,1,
+            ...h, /* */ 1,0,
+            // Bottom
+            ...b, /* */ 0,0,
+            ...f, /* */ 0,1,
+            ...c, /* */ 1,0,
+
+            ...f, /* */ 0,1,
+            ...g, /* */ 1,1,
+            ...c, /* */ 1,0,
+
         ]
     );
 

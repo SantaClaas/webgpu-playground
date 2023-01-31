@@ -2,20 +2,22 @@ import * as Triangle from "./triangle";
 import * as Camera from "./camera";
 import { vec3, mat4 } from "gl-matrix";
 import * as Quadrilateral from "./quadrilateral";
+import * as Cube from "./cube";
+
 
 interface RenderData {
     viewTransform: mat4;
     modelTransforms: Float32Array;
     countTriangles: number;
     countQuadrilaterals: number;
+    countCubes: number;
 }
 
 interface Scene {
     triangles: Triangle.Triangle[],
     quadrilaterals: Quadrilateral.Quadrilateral[],
+    cubes: Cube.Cube[],
     player: Camera.Camera,
-    triangleCount: number,
-    quadLiteralsCount: number,
     renderData: RenderData,
 }
 
@@ -29,11 +31,8 @@ function createTriangles() {
         // Translate to initial position
         mat4.translate(triangle.model, triangle.model, triangle.position);
 
-        // Set the values in the object data byte array that represents the matrices for the model?
-        // 16 because matrix is 4 x 4
-        for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-            objectData[16 * modelIndex + byteIndex] = <number>triangle.model.at(byteIndex);
-        }
+        // Write model to position in object data
+        objectData.set(triangle.model, 16 * modelIndex);
     }
 
     return { triangles, objectData };
@@ -49,38 +48,51 @@ function createQuadrilaterals(objectData: Float32Array, offset: number) {
             quadrilaterals.push(quadliteral);
             // Translate to initial position
             mat4.translate(quadliteral.model, quadliteral.model, quadliteral.position);
-            // Set the values in the object data byte array that represents the matrices for the model?
-            // 16 because matrix is 4 x 4
-            for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-                objectData[16 * modelIndex + byteIndex] = <number>quadliteral.model.at(byteIndex);
-            }
+            // 16 = length of matrix
+            // Write model to position in object data
+            objectData.set(quadliteral.model, 16 * modelIndex);
         }
     }
 
     return { quadrilaterals, objectData };
 }
-export function create(): Scene {
+
+function createCubes(objectData: Float32Array, offset: number) {
+    const cubes = [];
+
+    const cube = Cube.create([4, 0, .5]);
+    cubes.push(cube);
+    const modelIndex = offset;
+    mat4.translate(cube.model, cube.model, cube.position);
+    // Write model to position in object data
+    objectData.set(cube.model, 16 * modelIndex);
+   
+    return { cubes, objectData };
+}
+
+export function create(camera: Camera.Camera | null): Scene {
     const { triangles, objectData } = createTriangles();
     // Bad side effect on object data here but will fix later™
     const { quadrilaterals, objectData: newObjectData } = createQuadrilaterals(objectData, triangles.length);
-    const playerCamera = Camera.create([-2, 0, .5], 0, 0);
+    const { cubes, objectData: newNewObjectData } = createCubes(newObjectData, triangles.length + quadrilaterals.length);
+    const playerCamera = camera ?? Camera.create([-2, 0, .5], 0, 0);
     return {
         triangles,
         player: playerCamera,
-        triangleCount: triangles.length,
         quadrilaterals,
-        quadLiteralsCount: quadrilaterals.length,
+        cubes,
         renderData: {
+            countCubes: cubes.length,
             countQuadrilaterals: quadrilaterals.length,
             countTriangles: triangles.length,
-            modelTransforms: newObjectData,
+            modelTransforms: newNewObjectData,
             viewTransform: playerCamera.view,
         },
     };
 }
 
 export function update(scene: Scene): Scene {
-    const { renderData: {modelTransforms} } = scene;
+    const { renderData: { modelTransforms } } = scene;
     const triangles = scene.triangles.map((triangle, modelIndex) => {
         triangle = Triangle.update(triangle);
 
