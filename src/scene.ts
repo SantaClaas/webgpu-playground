@@ -60,13 +60,13 @@ function createQuadrilaterals(objectData: Float32Array, offset: number) {
 function createCubes(objectData: Float32Array, offset: number) {
     const cubes = [];
 
-    const cube = Cube.create([4, 0, .5]);
+    const cube = Cube.create([0, 0, 10]);
     cubes.push(cube);
     const modelIndex = offset;
     mat4.translate(cube.model, cube.model, cube.position);
     // Write model to position in object data
     objectData.set(cube.model, 16 * modelIndex);
-   
+
     return { cubes, objectData };
 }
 
@@ -93,17 +93,26 @@ export function create(camera: Camera.Camera | null): Scene {
 
 export function update(scene: Scene): Scene {
     const { renderData: { modelTransforms } } = scene;
+    // There has to be a better solution
+    let lastTriangleIndex = 0;
     const triangles = scene.triangles.map((triangle, modelIndex) => {
         triangle = Triangle.update(triangle);
 
         // Side effect updating is bad. Need to change later 🙃
         // Update the corresponding model data
-        for (let byteIndex = 0; byteIndex < 16; byteIndex++) {
-            modelTransforms[16 * modelIndex + byteIndex] = <number>triangle.model.at(byteIndex);
-        }
 
+        modelTransforms.set(triangle.model, 16 * modelIndex);
+        lastTriangleIndex = modelIndex;
         return triangle;
     });
+    // Cubes
+    const cubes = scene.cubes.map((cube, index) => {
+        
+        cube = Cube.update(cube);
+        modelTransforms.set(cube.model, 16 * (triangles.length + scene.quadrilaterals.length + index));
+        return cube;
+    })
+
 
     // We don't update quadrilaterals because they don't move and we translated them to their original position initally
 
@@ -112,6 +121,7 @@ export function update(scene: Scene): Scene {
     return {
         ...scene,
         triangles,
+        cubes,
         player: newPlayerCamera,
 
         renderData: {
